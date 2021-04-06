@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no"/>
+    <title></title>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+</head>
+
+<script type="text/javascript" charset="utf-8">
+    let idb = window.indexedDB;
+    let db;
+    let tabActive;
+
+    function addList(json) {
+
+        let li_s = '<tr>' +
+            '           <td>@p_id</td>' +
+            '           <td>@p_name</td>' +
+            '           <td>@p_number</td>' +
+            '           <td>@p_price</td>' +
+            '           <td>@p_createTime</td>' +
+            '        </tr>'
+
+        li_s = li_s.replace("@p_id", json.id);
+        li_s = li_s.replace("@p_name", json.name);
+        li_s = li_s.replace("@p_number", json.productNumber);
+        li_s = li_s.replace("@p_price", json.price);
+        li_s = li_s.replace("@p_createTime", json.createTime);
+        $("#tb").append(li_s);
+    }
+
+    function openDB() {
+        const rq = idb.open("txl");
+        rq.onsuccess = function () {
+            db = rq.result;
+            listData();
+        }
+        rq.onerror = function () {
+            alert(rq.error);
+        }
+        rq.onupgradeneeded = function () {
+            db = rq.result;
+            let objStore = db.createObjectStore("products", {keyPath: "id", autoIncrement: true});
+            objStore.createIndex("name", "name", {unique: false});
+            objStore.createIndex("productNumber", "productNumber", {unique: false});
+            objStore.createIndex("price", "price", {unique: false});
+            objStore.createIndex("createTime", "createTime", {unique: false});
+            objStore.createIndex("scanned", "scanned", {unique: true});
+
+            setDefaultData(objStore);
+        }
+    }
+
+    function setDefaultData(objStore) {
+        objStore.put({
+            id: 1,
+            name: "商品1",
+            productNumber: 230,
+            price: 290.2,
+            createTime: "2020-10-1",
+            scanned: false
+        });
+        objStore.put({
+            id: 2,
+            name: "商品2",
+            productNumber: 30,
+            price: 20.2,
+            createTime: "2020-10-1",
+            scanned: false
+        });
+        objStore.put({
+            id: 3,
+            name: "商品3",
+            productNumber: 30,
+            price: 20,
+            createTime: "2020-10-1",
+            scanned: false
+        });
+        objStore.put({
+            id: 4,
+            name: "商品4",
+            productNumber: 130,
+            price: 60.2,
+            createTime: "2020-10-1",
+            scanned: false
+        });
+        objStore.put({
+            id: 5,
+            name: "商品5",
+            productNumber: 2,
+            price: 23.8,
+            createTime: "2020-10-1",
+            scanned: false
+        });
+        objStore.put({
+            id: 6,
+            name: "商品6",
+            productNumber: 10,
+            price: 20.2,
+            createTime: "2020-10-1",
+            scanned: false
+        });
+
+    }
+
+
+    function listData() {
+        let trans = db.transaction("products", "readwrite");
+        let objStore = trans.objectStore("products");
+
+        let rq = objStore.openCursor();
+        rq.onsuccess = function () {
+            let cursor = rq.result;
+            if (cursor) {
+                if (tabActive === "1" && cursor.value.scanned) {
+                    let json = {
+                        id: cursor.value.id,
+                        name: cursor.value.name,
+                        productNumber: cursor.value.productNumber,
+                        price: cursor.value.price,
+                        createTime: cursor.value.createTime,
+                    };
+                    //alert(cursor.value.userid);
+                    console.log("json", json)
+                    addList(json);
+                } else if (tabActive === "0" && cursor.value.scanned === false) {
+                    let json = {
+                        id: cursor.value.id,
+                        name: cursor.value.name,
+                        productNumber: cursor.value.productNumber,
+                        price: cursor.value.price,
+                        createTime: cursor.value.createTime,
+                    };
+                    addList(json);
+
+                }
+                cursor.continue();
+            }
+        }
+    }
+
+    function updata(id) {
+        let trans = db.transaction("products", "readwrite");
+        let objStore = trans.objectStore("products");
+        let rq = objStore.openCursor();
+        rq.onsuccess = function () {
+            let cursor = rq.result;
+            if (cursor) {
+                if (cursor.value.id.toString() == id) {
+                    objStore.put({
+                        id: cursor.value.id,
+                        name: cursor.value.name,
+                        productNumber: cursor.value.productNumber,
+                        price: cursor.value.price,
+                        createTime: cursor.value.createTime,
+                        scanned: true
+                    });
+                }
+                cursor.continue();
+            } else {
+                localStorage.setItem("tabActive", "1");
+                location.reload();
+            }
+
+        }
+    }
+
+    function deleteDatabase() {
+        let trans = db.transaction("products", "readwrite");
+        let objStore = trans.objectStore("products");
+        setDefaultData(objStore);
+
+        let rq = objStore.openCursor();
+        rq.onsuccess = function () {
+            let cursor = rq.result;
+            if (cursor) {
+                objStore.put({
+                    id: cursor.value.id,
+                    name: cursor.value.name,
+                    productNumber: cursor.value.productNumber,
+                    price: cursor.value.price,
+                    createTime: cursor.value.createTime,
+                    scanned: false
+                });
+                cursor.continue();
+            } else {
+                localStorage.setItem("tabActive", "0");
+                location.reload();
+            }
+
+        }
+    }
+
+    $(document).ready(function () {
+            if (localStorage.getItem("tabActive")) {
+                tabActive = localStorage.getItem("tabActive");
+            } else {
+                localStorage.setItem("tabActive", "0")
+            }
+            if (tabActive === "0") {
+                $('#ProductsNotScanned').tab('show');
+            } else {
+                $("#ProductsScanned").tab('show');
+
+            }
+            openDB();
+            listData();
+
+        }
+    );
+</script>
+<body>
+
+<div class="container">
+    <div class="row " style="margin:24px 0  ">
+        <div class="col-xs-6 col-sm-3"><h3>开始扫描</h3></div>
+    </div>
+    <div class="row" style="margin:24px 0">
+        <form class="bs-example bs-example-form" role="form">
+            <div class="col-xs-6 col-sm-8">
+                <div class="input-group">
+                    <input id="inputId" type="text" class="form-control" placeholder="输入/扫描">
+                </div>
+            </div>
+            <div class="col-xs-6 col-sm-4">
+                <button type="button" id="scanButton" data-loading-text="Loading..." class="btn btn-primary"
+                        autocomplete="off">
+                    确定
+                </button>
+                <button type="button" id="resetButton" data-loading-text="Loading..." class="btn btn-primary"
+                        autocomplete="off">
+                    重置
+                </button>
+            </div>
+        </form>
+        <div class="clearfix visible-xs"></div>
+
+
+    </div>
+    <div class="row" style="margin:24px 0">
+        <div class="col-xs-12 col-sm-12">
+            <ul class="nav nav-tabs">
+                <li class="active" id="ProductsNotScanned"><a href="#">未扫描商品</a></li>
+                <li id="ProductsScanned"><a href="#">已扫描商品</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <caption style="padding-left: 8px">商品信息</caption>
+            <thead>
+            <tr>
+                <th>商品序号</th>
+                <th>商品名称</th>
+                <th>商品数量</th>
+                <th>商品单价</th>
+                <th>入库时间</th>
+            </tr>
+            </thead>
+            <tbody id="tb">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js"></script>
+<script>
+    $('#scanButton').on('click', function (e) {
+        if ($('#inputId').val() == "") {
+            alert("请认真扫描")
+        } else {
+            updata($('#inputId').val())
+        }
+
+    })
+
+    $('#resetButton').on('click', function (e) {
+        deleteDatabase();
+    })
+
+    $('#ProductsNotScanned a').click(function (e) {
+        e.preventDefault()
+        $(this).tab('show')
+        localStorage.setItem("tabActive", "0");
+        location.reload();
+    })
+
+    $('#ProductsScanned a').click(function (e) {
+        e.preventDefault()
+        $(this).tab('show');
+        localStorage.setItem("tabActive", "1");
+        location.reload();
+    })
+</script>
+</body>
+</html>
