@@ -202,11 +202,10 @@
             } else {
                 localStorage.setItem("tabActive", "0")
             }
-            if (tabActive === "0") {
-                $('#ProductsNotScanned').tab('show');
-            } else {
+            if (tabActive === "1") {
                 $("#ProductsScanned").tab('show');
-
+            } else {
+                $('#ProductsNotScanned').tab('show');
             }
             openDB();
             listData();
